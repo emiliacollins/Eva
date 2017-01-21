@@ -15,6 +15,12 @@
 
 class PartitionEntry {
  public:
+
+  /***** Constants *****/
+  
+  static const unsigned int ENTRY_LENGTH = 16;
+
+  
   /***** Constructors *****/
 
   // Default constructor
@@ -61,7 +67,6 @@ class PartitionEntry {
   static const unsigned long DEFAULT_LENGTH   = 0x00000000;
 
   // Positions and sizes for aligning entry components in output byte array
-  static const unsigned int ENTRY_LENGTH        = 16;
   static const unsigned int STATUS_INDEX        =  0;
   static const unsigned int STATUS_LENGTH       =  1;
   static const unsigned int CHS_START_INDEX     =  1;

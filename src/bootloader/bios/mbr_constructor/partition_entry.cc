@@ -126,7 +126,7 @@ unsigned char* PartitionEntry::output() const {
 
   // Output LBA starting address
   {
-    unsigned char* startArray = convertToByteArray(start); 
+    unsigned char* startArray = convertToByteArray(start, LBA_START_LENGTH); 
     for (int i=0; i < LBA_START_LENGTH; i++) {
       result[LBA_START_INDEX + i] = startArray[i];
     }
@@ -135,7 +135,7 @@ unsigned char* PartitionEntry::output() const {
 
   // Output sector count
   {
-    unsigned char* sectorCountArray = convertToByteArray(sectorCount); 
+    unsigned char* sectorCountArray = convertToByteArray(sectorCount, SECTOR_COUNT_LENGTH); 
     for (unsigned int i=0; i < SECTOR_COUNT_LENGTH; i++) {
       result[SECTOR_COUNT_INDEX + i] = sectorCountArray[i];
     }

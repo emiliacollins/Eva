@@ -31,7 +31,7 @@ mbr_constructor: $(COMPILE_DIR)/mbr_constructor.o
 
 # debug builds -------------------------------------------------------------------------------------
 
-debug_all: chs_address partition_entry
+debug_all: clean chs_address partition_entry partition_table_class utilities
 	@echo Debug build successful!
 
 chs_address: $(COMPILE_DIR)/chs_address.o
@@ -39,6 +39,12 @@ chs_address: $(COMPILE_DIR)/chs_address.o
 
 partition_entry: $(COMPILE_DIR)/partition_entry.o
 	@echo partition_entry compiled without errors!
+
+partition_table_class: $(COMPILE_DIR)/partition_table.o
+	@echo partition_table compiled without errors!
+
+utilities: $(COMPILE_DIR)/utilities.o
+	@echo utilities compiled without errors!
 
 
 # *.o files ----------------------------------------------------------------------------------------
@@ -52,6 +58,12 @@ $(COMPILE_DIR)/partition_entry.o: $(TOOL_DIR)/partition_entry.cc $(TOOL_DIR)/par
 $(COMPILE_DIR)/chs_address.o: $(TOOL_DIR)/chs_address.cc $(TOOL_DIR)/chs_address.h $(TOOL_DIR)/typedefs.h
 	$(CXX) -c -o $(COMPILE_DIR)/chs_address.o $(TOOL_DIR)/chs_address.cc
 
+$(COMPILE_DIR)/partition_table.o: $(TOOL_DIR)/partition_table.cc $(TOOL_DIR)/partition_entry.h $(TOOL_DIR)/partition_table.h
+	$(CXX) -c -o $(COMPILE_DIR)/partition_table.o $(TOOL_DIR)/partition_table.cc
+
+$(COMPILE_DIR)/utilities.o: $(TOOL_DIR)/utilities.cc $(TOOL_DIR)/utilities.h $(TOOL_DIR)/chs_address.h $(TOOL_DIR)/typedefs.h
+	$(CXX) -c -o $(COMPILE_DIR)/utilities.o $(TOOL_DIR)/utilities.cc
+
 
 # header dependencies ------------------------------------------------------------------------------
 
@@ -59,7 +71,9 @@ $(TOOL_DIR)/chs_address.h: $(TOOL_DIR)/typedefs.h ;
 
 $(TOOL_DIR)/partition_entry.h: $(TOOL_DIR)/typedefs.h $(TOOL_DIR)/chs_address.h ;
 
-$(TOOL_DIR)/utilities.h: ;
+$(TOOL_DIR)/partition_table.h: $(TOOL_DIR)/partition_entry.h ;
+
+$(TOOL_DIR)/utilities.h: $(TOOL_DIR)/typedefs.h $(TOOL_DIR)/chs_address.h ;
 
 $(TOOL_DIR)/typedefs.h: ;
 
