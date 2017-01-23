@@ -110,7 +110,7 @@ unsigned char* PartitionEntry::output() const {
   unsigned char* result = new unsigned char[ENTRY_LENGTH];
 
   // Output partition status
-  result[STATUS_INDEX] = type;
+  result[STATUS_INDEX] = status;
 
   // Output CHS starting address
   {

@@ -1,5 +1,5 @@
 TOOL_DIR=mbr_constructor
-BOOTCODE_DIR=boot_code
+BOOTCODE_DIR=bootcode
 OUTPUT_DIR=build
 TEST_DIR=$(TOOL_DIR)/test
 TEST_OUTPUT_DIR=$(OUTPUT_DIR)/test
@@ -12,7 +12,7 @@ CXX=g++
 
 #---------------------------------------------------------------------------------------------------
 
-all: mbr_constructor_exec
+all: bootcode
 
 mbr: mbr_skeleton bootcode partition_table
 	cp mbr_skeleton mbr.img
@@ -29,8 +29,8 @@ bootcode: $(OUTPUT_DIR)/bootcode_1.bin $(OUTPUT_DIR)/bootcode_2.bin
 
 # executables --------------------------------------------------------------------------------------
 
-mbr_constructor_exec: $(COMPILE_DIR)/mbr_constructor.o
-	$(CXX) $(COMPILER_FLAGS) -o $(OUTPUT_DIR)/$(TARGET) $(COMPILE_DIR)/mbr_constructor.o
+mbr_constructor_exec: $(COMPILE_DIR)/mbr_constructor.o $(COMPILE_DIR)/config_parser.o $(COMPILE_DIR)/utilities.o $(COMPILE_DIR)/partition_table.o $(COMPILE_DIR)/partition_entry.o $(COMPILE_DIR)/chs_address.o
+	$(CXX) $(COMPILER_FLAGS) -o $(OUTPUT_DIR)/mbr_constructor $(COMPILE_DIR)/mbr_constructor.o $(COMPILE_DIR)/config_parser.o $(COMPILE_DIR)/utilities.o $(COMPILE_DIR)/partition_table.o $(COMPILE_DIR)/partition_entry.o $(COMPILE_DIR)/chs_address.o
 
 
 # debug builds -------------------------------------------------------------------------------------
@@ -77,7 +77,7 @@ $(TEST_OUTPUT_DIR)/partition_table_test: $(COMPILE_DIR)/partition_table_test.o $
 
 # *.o files ----------------------------------------------------------------------------------------
 
-$(COMPILE_DIR)/mbr_constructor.o: $(TOOL_DIR)/mbr_constructor.cc $(TOOL_DIR)/config_parser.h $(TOOL_DIR)/exit_codes.h $(TOOL_DIR)/required_params.h
+$(COMPILE_DIR)/mbr_constructor.o: $(TOOL_DIR)/mbr_constructor.cc $(TOOL_DIR)/config_parser.h $(TOOL_DIR)/exit_codes.h $(TOOL_DIR)/required_params.h $(TOOL_DIR)/mbr_layout.h $(TOOL_DIR)/utilities.h $(TOOL_DIR)/partition_table.h
 	$(CXX) $(COMPILER_FLAGS) -c -o $(COMPILE_DIR)/mbr_constructor.o $(TOOL_DIR)/mbr_constructor.cc
 
 $(COMPILE_DIR)/partition_entry.o: $(TOOL_DIR)/partition_entry.cc $(TOOL_DIR)/partition_entry.h $(TOOL_DIR)/utilities.h $(TOOL_DIR)/typedefs.h
@@ -124,11 +124,11 @@ $(TOOL_DIR)/typedefs.h: ;
 # bootcode binaries --------------------------------------------------------------------------------
 
 $(OUTPUT_DIR)/bootcode_1.bin: $(BOOTCODE_DIR)/bootcode_1.asm
-	$(ASM) -f bin -o $(OUTPUT_DIR)/bootcode_1.bin bootcode_1.asm
+	$(ASM) -f bin -o $(OUTPUT_DIR)/bootcode_1.bin $(BOOTCODE_DIR)/bootcode_1.asm
 
 
 $(OUTPUT_DIR)/bootcode_2.bin: $(BOOTCODE_DIR)/bootcode_2.asm
-	$(ASM) -f bin -o $(OUTPUT_DIR)/bootcode_2.bin bootcode_2.asm
+	$(ASM) -f bin -o $(OUTPUT_DIR)/bootcode_2.bin $(BOOTCODE_DIR)/bootcode_2.asm
 
 
 # utilities

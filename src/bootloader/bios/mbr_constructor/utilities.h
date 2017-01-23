@@ -29,7 +29,7 @@ LBAddress chs2lba(const CHSAddress& address);
 CHSAddress lba2chs(LBAddress address);
 
 // Converts the first <length> bytes of a given number to an array of bytes
-unsigned char* convertToByteArray(unsigned long num, unsigned int length);
+unsigned char* convertToByteArray(unsigned long long num, unsigned int length);
 
 
 #endif

@@ -31,7 +31,6 @@ const std::vector<std::string> REQUIRED_PARAMS =
     "partition_4_size",
     "drive_number",
     "disk_signature",
-    "boot_signature",
   };
 
 

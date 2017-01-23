@@ -38,7 +38,6 @@ const PartitionEntry& PartitionTable::getEntry(unsigned int pos) const {
 
 unsigned char* PartitionTable::output() const {
   unsigned char* result = new unsigned char[NUM_ENTRIES * PartitionEntry::ENTRY_LENGTH];
-
   // Write each entry into result array
   for (int i=0; i < NUM_ENTRIES; i++) {
       unsigned char* entry = entries[i].output();
