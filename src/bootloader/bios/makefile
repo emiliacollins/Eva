@@ -1,14 +1,18 @@
 TOOL_DIR=mbr_constructor
 BOOTCODE_DIR=boot_code
 OUTPUT_DIR=build
+TEST_DIR=$(TOOL_DIR)/test
+TEST_OUTPUT_DIR=$(OUTPUT_DIR)/test
 COMPILE_DIR=$(OUTPUT_DIR)/.compiled
+
+COMPILER_FLAGS=-std=c++11
 
 ASM=nasm
 CXX=g++
 
 #---------------------------------------------------------------------------------------------------
 
-all: mbr_constructor;
+all: mbr_constructor_exec
 
 mbr: mbr_skeleton bootcode partition_table
 	cp mbr_skeleton mbr.img
@@ -25,14 +29,17 @@ bootcode: $(OUTPUT_DIR)/bootcode_1.bin $(OUTPUT_DIR)/bootcode_2.bin
 
 # executables --------------------------------------------------------------------------------------
 
-mbr_constructor: $(COMPILE_DIR)/mbr_constructor.o
-	$(CXX) -o $(OUTPUT_DIR)/$(TARGET) $(COMPILE_DIR)/mbr_constructor.o
+mbr_constructor_exec: $(COMPILE_DIR)/mbr_constructor.o
+	$(CXX) $(COMPILER_FLAGS) -o $(OUTPUT_DIR)/$(TARGET) $(COMPILE_DIR)/mbr_constructor.o
 
 
 # debug builds -------------------------------------------------------------------------------------
 
-debug_all: clean chs_address partition_entry partition_table_class utilities
+debug_all: clean chs_address partition_entry partition_table_class config_parser utilities
 	@echo Debug build successful!
+
+mbr_constructor: $(COMPILE_DIR)/mbr_constructor.o
+	@echo mbr_constructor compiled without errors!
 
 chs_address: $(COMPILE_DIR)/chs_address.o
 	@echo chs_address compiled without errors!
@@ -43,35 +50,71 @@ partition_entry: $(COMPILE_DIR)/partition_entry.o
 partition_table_class: $(COMPILE_DIR)/partition_table.o
 	@echo partition_table compiled without errors!
 
+config_parser: $(COMPILE_DIR)/config_parser.o
+	@echo config_parser compiled without errors!
+
 utilities: $(COMPILE_DIR)/utilities.o
 	@echo utilities compiled without errors!
 
 
+# test builds --------------------------------------------------------------------------------------
+
+test_all: clean config_parser_test partition_table_test
+	@echo Test build successful!
+
+config_parser_test: $(TEST_OUTPUT_DIR)/config_parser_test
+	@echo config_parser_test compiled without errors!
+
+partition_table_test: $(TEST_OUTPUT_DIR)/partition_table_test
+	@echo partition_table_test compiled without errors!
+
+$(TEST_OUTPUT_DIR)/config_parser_test: $(COMPILE_DIR)/config_parser_test.o $(COMPILE_DIR)/config_parser.o
+	$(CXX) $(COMPILER_FLAGS) -o $(TEST_OUTPUT_DIR)/config_parser_test $(COMPILE_DIR)/config_parser_test.o $(COMPILE_DIR)/config_parser.o
+
+$(TEST_OUTPUT_DIR)/partition_table_test: $(COMPILE_DIR)/partition_table_test.o $(COMPILE_DIR)/partition_table.o $(COMPILE_DIR)/partition_entry.o $(COMPILE_DIR)/chs_address.o $(COMPILE_DIR)/utilities.o
+	$(CXX) $(COMPILER_FLAGS) -o $(TEST_OUTPUT_DIR)/partition_table_test $(COMPILE_DIR)/partition_table_test.o $(COMPILE_DIR)/partition_table.o $(COMPILE_DIR)/partition_entry.o $(COMPILE_DIR)/chs_address.o $(COMPILE_DIR)/utilities.o
+
+
 # *.o files ----------------------------------------------------------------------------------------
 
-$(COMPILE_DIR)/mbr_constructor.o: $(TOOL_DIR)/mbr_constructor.cc
-	$(CXX) -c -o $(COMPILE_DIR)/mbr_constructor.o $(TOOL_DIR)/mbr_constructor.cc
+$(COMPILE_DIR)/mbr_constructor.o: $(TOOL_DIR)/mbr_constructor.cc $(TOOL_DIR)/config_parser.h $(TOOL_DIR)/exit_codes.h $(TOOL_DIR)/required_params.h
+	$(CXX) $(COMPILER_FLAGS) -c -o $(COMPILE_DIR)/mbr_constructor.o $(TOOL_DIR)/mbr_constructor.cc
 
 $(COMPILE_DIR)/partition_entry.o: $(TOOL_DIR)/partition_entry.cc $(TOOL_DIR)/partition_entry.h $(TOOL_DIR)/utilities.h $(TOOL_DIR)/typedefs.h
-	$(CXX) -c -o $(COMPILE_DIR)/partition_entry.o $(TOOL_DIR)/partition_entry.cc
+	$(CXX) $(COMPILER_FLAGS) -c -o $(COMPILE_DIR)/partition_entry.o $(TOOL_DIR)/partition_entry.cc
 
 $(COMPILE_DIR)/chs_address.o: $(TOOL_DIR)/chs_address.cc $(TOOL_DIR)/chs_address.h $(TOOL_DIR)/typedefs.h
-	$(CXX) -c -o $(COMPILE_DIR)/chs_address.o $(TOOL_DIR)/chs_address.cc
+	$(CXX) $(COMPILER_FLAGS) -c -o $(COMPILE_DIR)/chs_address.o $(TOOL_DIR)/chs_address.cc
 
 $(COMPILE_DIR)/partition_table.o: $(TOOL_DIR)/partition_table.cc $(TOOL_DIR)/partition_entry.h $(TOOL_DIR)/partition_table.h
-	$(CXX) -c -o $(COMPILE_DIR)/partition_table.o $(TOOL_DIR)/partition_table.cc
+	$(CXX) $(COMPILER_FLAGS) -c -o $(COMPILE_DIR)/partition_table.o $(TOOL_DIR)/partition_table.cc
+
+$(COMPILE_DIR)/config_parser.o: $(TOOL_DIR)/config_parser.cc $(TOOL_DIR)/config_parser.h
+	$(CXX) $(COMPILER_FLAGS) -c -o $(COMPILE_DIR)/config_parser.o $(TOOL_DIR)/config_parser.cc
 
 $(COMPILE_DIR)/utilities.o: $(TOOL_DIR)/utilities.cc $(TOOL_DIR)/utilities.h $(TOOL_DIR)/chs_address.h $(TOOL_DIR)/typedefs.h
-	$(CXX) -c -o $(COMPILE_DIR)/utilities.o $(TOOL_DIR)/utilities.cc
+	$(CXX) $(COMPILER_FLAGS) -c -o $(COMPILE_DIR)/utilities.o $(TOOL_DIR)/utilities.cc
+
+$(COMPILE_DIR)/config_parser_test.o: $(TEST_DIR)/config_parser_test.cc $(TOOL_DIR)/config_parser.h
+	$(CXX) $(COMPILER_FLAGS) -c -o $(COMPILE_DIR)/config_parser_test.o $(TEST_DIR)/config_parser_test.cc
+
+$(COMPILE_DIR)/partition_table_test.o: $(TEST_DIR)/partition_table_test.cc $(TOOL_DIR)/partition_table.h $(TOOL_DIR)/partition_entry.h
+	$(CXX) $(COMPILER_FLAGS) -c -o $(COMPILE_DIR)/partition_table_test.o $(TEST_DIR)/partition_table_test.cc
 
 
 # header dependencies ------------------------------------------------------------------------------
 
 $(TOOL_DIR)/chs_address.h: $(TOOL_DIR)/typedefs.h ;
 
+$(TOOL_DIR)/config_parser.h: ;
+
+$(TOOL_DIR)/exit_codes.h: ;
+
 $(TOOL_DIR)/partition_entry.h: $(TOOL_DIR)/typedefs.h $(TOOL_DIR)/chs_address.h ;
 
 $(TOOL_DIR)/partition_table.h: $(TOOL_DIR)/partition_entry.h ;
+
+$(TOOL_DIR)/required_params.h: ;
 
 $(TOOL_DIR)/utilities.h: $(TOOL_DIR)/typedefs.h $(TOOL_DIR)/chs_address.h ;
 
@@ -88,7 +131,10 @@ $(OUTPUT_DIR)/bootcode_2.bin: $(BOOTCODE_DIR)/bootcode_2.asm
 	$(ASM) -f bin -o $(OUTPUT_DIR)/bootcode_2.bin bootcode_2.asm
 
 
-# utitlities
+# utilities
 
 clean:
-	rm -rf $(COMPILE_DIR)/*.o $(TARGET)
+	rm -rf $(OUTPUT_DIR)
+	mkdir -p $(OUTPUT_DIR)
+	mkdir -p $(TEST_OUTPUT_DIR)
+	mkdir -p $(COMPILE_DIR)

@@ -25,10 +25,15 @@ class PartitionEntry {
 
   // Default constructor
   PartitionEntry();
+
   // Constructor for LBA partition size specification
   PartitionEntry(PartitionStatus status, PartitionType type, LBAddress start, unsigned long sectorCount);
+
   // Constructor for CHS partition size specification
   PartitionEntry(PartitionStatus status, CHSAddress start, PartitionType type, CHSAddress end);
+
+  //Copy Constructor
+  void operator=(const PartitionEntry& entry);
 
   
   /***** Accessors *****/

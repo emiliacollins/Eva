@@ -14,25 +14,22 @@
 
 class PartitionTable {
  public:
-  /***** Constructors & Destructors *****/
+  /***** Constructor *****/
   
   // Constructor
   PartitionTable();
-
-  // Destructor
-  ~PartitionTable();
 
   
   /***** Mutators *****/
 
   // Places given entry at specified position
-  void setEntry(unsigned int pos, PartitionEntry* entry);
+  void setEntry(unsigned int pos, const PartitionEntry& entry);
 
 
   /***** Accessors *****/
 
   // Retrieves entry at position
-  PartitionEntry* getEntry(unsigned int pos) const;
+  const PartitionEntry& getEntry(unsigned int pos) const;
 
 
   /***** Utilities *****/
@@ -48,7 +45,7 @@ class PartitionTable {
 
   /***** Instance Variables *****/
   
-  PartitionEntry* entries[NUM_ENTRIES];
+  PartitionEntry entries[NUM_ENTRIES];
 };
 
 #endif

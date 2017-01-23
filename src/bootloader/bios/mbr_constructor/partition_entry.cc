@@ -34,6 +34,15 @@ void PartitionEntry::init(PartitionStatus status, PartitionType type, LBAddress 
   setSectorCount(sectorCount);
 }
 
+// Copy Constructor
+void PartitionEntry::operator=(const PartitionEntry& entry) {
+  setStatus(entry.getStatus());
+  setStart(entry.getStartLBA());
+  setType(entry.getType());
+  setSectorCount(entry.getSectorCount());
+}
+
+
 
 /***** Accessors *****/
 

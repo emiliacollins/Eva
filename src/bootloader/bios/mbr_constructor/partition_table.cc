@@ -9,36 +9,27 @@
 #include "partition_table.h"
 
 
-/***** Constructor & Destructor *****/
+/***** Constructor *****/
 
 // Default constructor, populates table with invalid entries
 PartitionTable::PartitionTable() {
   for (int i=0; i < NUM_ENTRIES; i++) {
-    entries[i] = new PartitionEntry();
-    entries[i] -> setStatus(0x01);
-  }
-}
-
-// Destructor, destroys each non-null pointer in entries
-PartitionTable::~PartitionTable() {
-  for (unsigned int i=0; i < NUM_ENTRIES; i++) {
-    if (entries[i] != nullptr) {
-      delete entries[i];
-    }
+    entries[i] = PartitionEntry();
+    entries[i].setStatus(0x01);
   }
 }
 
 
 /***** Mutators *****/
 
-void PartitionTable::setEntry(unsigned int pos, PartitionEntry* entry) {
+void PartitionTable::setEntry(unsigned int pos, const PartitionEntry& entry) {
   entries[pos] = entry;
 }
 
 
 /***** Accessors *****/
 
-PartitionEntry* PartitionTable::getEntry(unsigned int pos) const {
+const PartitionEntry& PartitionTable::getEntry(unsigned int pos) const {
   return entries[pos];
 }
 
@@ -50,7 +41,7 @@ unsigned char* PartitionTable::output() const {
 
   // Write each entry into result array
   for (int i=0; i < NUM_ENTRIES; i++) {
-      unsigned char* entry = entries[i] -> output();
+      unsigned char* entry = entries[i].output();
       for (int j=0; j < PartitionEntry::ENTRY_LENGTH; j++) {
 	result[i * PartitionEntry::ENTRY_LENGTH + j] = entry[j];
       }
