@@ -106,15 +106,15 @@ void PartitionEntry::setSectorCount(unsigned long sectorCount) {
 /***** Utilities *****/
 
 // Outputs the PartitionEntry object into byte array as it would be represented on disk
-unsigned char* PartitionEntry::output() const {
-  unsigned char* result = new unsigned char[ENTRY_LENGTH];
+char* PartitionEntry::output() const {
+  char* result = new char[ENTRY_LENGTH];
 
   // Output partition status
   result[STATUS_INDEX] = status;
 
   // Output CHS starting address
   {
-    unsigned char* chsStart = lba2chs(start).output();
+    char* chsStart = lba2chs(start).output();
     for (unsigned int i= 0; i < CHSAddress::CHSADDRESS_SIZE; i++) {
       result[CHS_START_INDEX + i] = chsStart[i]; 
     }
@@ -126,7 +126,7 @@ unsigned char* PartitionEntry::output() const {
 
   // Output CHS ending address
   {
-    unsigned char* chsEnd = lba2chs(start + sectorCount - 1).output();
+    char* chsEnd = lba2chs(start + sectorCount - 1).output();
     for (unsigned int i= 0; i < CHSAddress::CHSADDRESS_SIZE; i++) {
       result[CHS_END_INDEX + i] = chsEnd[i]; 
     }
@@ -135,7 +135,7 @@ unsigned char* PartitionEntry::output() const {
 
   // Output LBA starting address
   {
-    unsigned char* startArray = convertToByteArray(start, LBA_START_LENGTH); 
+    char* startArray = convertToByteArray(start, LBA_START_LENGTH); 
     for (int i=0; i < LBA_START_LENGTH; i++) {
       result[LBA_START_INDEX + i] = startArray[i];
     }
@@ -144,7 +144,7 @@ unsigned char* PartitionEntry::output() const {
 
   // Output sector count
   {
-    unsigned char* sectorCountArray = convertToByteArray(sectorCount, SECTOR_COUNT_LENGTH); 
+    char* sectorCountArray = convertToByteArray(sectorCount, SECTOR_COUNT_LENGTH); 
     for (unsigned int i=0; i < SECTOR_COUNT_LENGTH; i++) {
       result[SECTOR_COUNT_INDEX + i] = sectorCountArray[i];
     }

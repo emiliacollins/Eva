@@ -6,9 +6,6 @@
 
 const std::vector<std::string> REQUIRED_PARAMS =
   {
-    "timestamp_seconds",
-    "timestamp_minutes",
-    "timestamp_hours",
     "use_partition_1",
     "use_partition_2",
     "use_partition_3",
@@ -29,8 +26,6 @@ const std::vector<std::string> REQUIRED_PARAMS =
     "partition_4_type",
     "partition_4_start",
     "partition_4_size",
-    "drive_number",
-    "disk_signature",
   };
 
 

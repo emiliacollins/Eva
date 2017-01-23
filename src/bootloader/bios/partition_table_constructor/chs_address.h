@@ -45,7 +45,7 @@ class CHSAddress {
   /***** Utilities *****/
 
   // Outputs the CHSAddress object into byte array as it would be represented on disk
-  unsigned char* output() const;
+  char* output() const;
 
   
  private:

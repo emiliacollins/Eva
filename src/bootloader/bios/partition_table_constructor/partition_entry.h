@@ -59,7 +59,7 @@ class PartitionEntry {
   /***** Utilities *****/
 
   // Outputs the PartitionEntry object into byte array as it would be represented on disk
-  unsigned char* output() const;
+  char* output() const;
 
   
  private:

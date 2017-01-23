@@ -14,6 +14,12 @@
 
 class PartitionTable {
  public:
+  /***** Constants *****/
+  
+  static const unsigned int NUM_ENTRIES = 4;
+  static const unsigned int PARTITION_TABLE_LENGTH = 64;
+  
+  
   /***** Constructor *****/
   
   // Constructor
@@ -34,15 +40,10 @@ class PartitionTable {
 
   /***** Utilities *****/
   
-  unsigned char* output() const;
+  char* output() const;
 
   
  private:
-  /***** Constants *****/
-  
-  static const unsigned int NUM_ENTRIES = 4;
-
-
   /***** Instance Variables *****/
   
   PartitionEntry entries[NUM_ENTRIES];

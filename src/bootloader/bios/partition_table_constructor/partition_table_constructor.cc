@@ -5,7 +5,6 @@
 #include "config_parser.h"
 #include "exit_codes.h"
 #include "required_params.h"
-#include "mbr_layout.h"
 #include "utilities.h"
 #include "partition_table.h"
 
@@ -15,7 +14,7 @@ using namespace std;
 
 void printWelcome() {
   cout << "################################################################################" << endl
-       << "#                    Welcome to Eric's MBR constructor!                        #" << endl
+       << "#              Welcome to Eric's MBR Partition Table constructor!              #" << endl
        << "################################################################################" << endl
        << endl;
 }
@@ -79,9 +78,13 @@ ofstream getOutputHandle(string outputFilename) {
 }
 
 
-PartitionTable generatePartitionTable(const map<string, unsigned long>& params) {
+PartitionTable generatePartitionTable(const map<string, unsigned long>& params, ofstream& out) {
   PartitionTable table;
 
+  cout << "Generating partition table...";
+  cout.flush();
+
+  
   // Partition 1
   if (params.at("use_partition_1")) {
     PartitionEntry entry;
@@ -122,78 +125,24 @@ PartitionTable generatePartitionTable(const map<string, unsigned long>& params) 
     table.setEntry(3, entry);
   }
 
-  return table;
-}
-
-void generateMBR(const map<string, unsigned long>& params, ofstream& out) {
-
-  cout << "Generating MBR skeleton from config..." << endl;
-
-  // Make space for first bootstrap
-  cout << "\t" << "Allocating room for first bootcode section...";
-  for (int i=0; i < BOOTCODE_1_LENGTH / WORD_SIZE; i++) {
-    out.write(EMPTY_WORD, WORD_SIZE);
-  }
-  cout << "done" << endl;
-
-  // Empty separator
-  out.write(EMPTY_WORD, WORD_SIZE);
-
-  // Physical drive number
-  cout << "\t" << "Writing drive number...";
-  cout.flush();
-  char driveNum = params.at("drive_number");
-  out.put(driveNum);
-  cout << "done" << endl;
-
-  // Disk timestamp
-  cout << "\t" << "Writing timestamp...";
-  out.put(params.at("timestamp_seconds"));
-  out.put(params.at("timestamp_minutes"));
-  out.put(params.at("timestamp_hours"));
-  cout << "done" << endl;
-
-  // Make space for second bootstrap
-  cout << "\t" << "Allocating room for second bootcode section...";
-  cout.flush();
-  for (int i=0; i < BOOTCODE_2_LENGTH / WORD_SIZE; i++) {
-    out.write(EMPTY_WORD, WORD_SIZE);
-  }
-  cout << "done" << endl;
-
-  // Disk signature
-  cout << "\t" << "Writing disk signature...";
-  cout.flush();
-  char* diskSignatureBytes = (char*)(convertToByteArray(params.at("disk_signature"), DISK_SIGNATURE_LENGTH));
-  out.write(diskSignatureBytes, DISK_SIGNATURE_LENGTH);
-  delete[] diskSignatureBytes;
   cout << "done" << endl;
   
-  // Empty separator
-  out.write(EMPTY_WORD, WORD_SIZE);
-
-  // Partition table
-  cout << "\t" << "Generating partition table...";
-  cout.flush();
-  char* partitionTableBytes = (char*)generatePartitionTable(params).output();
-  cout << "done" << endl;
+  // Write Partition table
   cout << "\t" << "Writing partition table...";
   cout.flush();
-  out.write(partitionTableBytes, PARTITION_TABLE_LENGTH);
+
+  char* partitionTableBytes = (char*)table.output();
+  out.write(partitionTableBytes, PartitionTable::PARTITION_TABLE_LENGTH);
   delete[] partitionTableBytes;
-  cout << "done" << endl;
-  
-  // Boot signature
-  cout << "\t" << "Writing boot signature...";
-  cout.flush();
-  out.write(BOOT_SIGNATURE, BOOT_SIGNATURE_LENGTH);
+
   cout << "done" << endl;
 }
+
 
 void printGoodbye() {
   cout << endl
        << "################################################################################" << endl
-       << "#                   MBR construction was successful! Exiting...                #" << endl
+       << "#               PartitionTable construction was successful! Exiting...         #" << endl
        << "################################################################################" << endl
        << endl;
   exit(EXIT_SUCCESSFUL);
@@ -210,7 +159,7 @@ int main() {
 
   ofstream outFile = getOutputHandle(outputFilename);
 
-  generateMBR(parameters, outFile);
+  generatePartitionTable(parameters, outFile);
 
   outFile.close();
 

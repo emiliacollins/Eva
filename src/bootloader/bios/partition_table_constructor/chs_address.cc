@@ -62,8 +62,8 @@ void CHSAddress::setSector(SectorNumber sector) {
 /***** Utilities *****/
 
 // Ouptut CHSAddress object into byte array as it would be represented on disk
-unsigned char* CHSAddress::output() const {
-  unsigned char* result = new unsigned char[CHSADDRESS_SIZE];
+char* CHSAddress::output() const {
+  char* result = new char[CHSADDRESS_SIZE];
   result[H_INDEX] = head;
   result[CHIGH_S_INDEX] = makeCSbyte();
   result[CLOW_INDEX] = makeCbyte();

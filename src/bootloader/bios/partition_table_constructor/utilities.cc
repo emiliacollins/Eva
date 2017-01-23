@@ -38,8 +38,8 @@ CHSAddress lba2chs(const LBAddress address) {
 
 
 // Converts the first <length> bytes of a given number to an array of bytes (little endian)
-unsigned char* convertToByteArray(unsigned long long num, unsigned int length) {
-  unsigned char * result = new unsigned char[length];
+char* convertToByteArray(unsigned long long num, unsigned int length) {
+  char * result = new char[length];
 
   for (int i=0; i < length; i++) {
     // Retrieve the lowest 8 bits
