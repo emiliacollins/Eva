@@ -6,7 +6,7 @@ TEST_OUTPUT_DIR=$(OUTPUT_DIR)/test
 COMPILE_DIR=$(OUTPUT_DIR)/.compiled
 EXAMPLE_DIR=example
 
-TARGET=$(OUTPUT_DIR)/partition_table.bin
+TARGET=$(OUTPUT_DIR)/mbr.img
 
 COMPILER_FLAGS=-std=c++11
 
@@ -21,6 +21,7 @@ $(OUTPUT_DIR)/mbr.img: $(OUTPUT_DIR)/partition_table.bin $(OUTPUT_DIR)/bootcode.
 	dd if=/dev/zero of=$(OUTPUT_DIR)/mbr.img bs=512 count=1
 	dd if=$(OUTPUT_DIR)/bootcode.bin of=$(OUTPUT_DIR)/mbr.img
 	dd if=$(OUTPUT_DIR)/partition_table.bin of=$(OUTPUT_DIR)/mbr.img bs=1 seek=446
+	cat bootsignature >> $(OUTPUT_DIR)/mbr.img
 
 $(OUTPUT_DIR)/partition_table.bin: $(OUTPUT_DIR)/partition_table_constructor
 	./$(OUTPUT_DIR)/partition_table_constructor < example/example.in
