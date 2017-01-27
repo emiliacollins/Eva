@@ -16,7 +16,7 @@
 /***** Constants *****/
 
 const unsigned int HEADS_PER_CYLINDER = 16;
-const unsigned int MAX_SECTORS_PER_TRACK = 64;
+const unsigned int MAX_SECTORS_PER_TRACK = 63;
 const unsigned int LOWEST_BYTE_MASK = 0xFF;
 
 
