@@ -1,14 +1,8 @@
-include example/example.conf
-
 TOOL_DIR=partition_table_constructor
-BOOTCODE_DIR=bootcode
 OUTPUT_DIR=build
 TEST_DIR=$(TOOL_DIR)/test
 TEST_OUTPUT_DIR=$(OUTPUT_DIR)/test
 COMPILE_DIR=$(OUTPUT_DIR)/.compiled
-EXAMPLE_DIR=example
-
-TARGET=$(OUTPUT_DIR)/boot_disk.img
 
 COMPILER_FLAGS=-std=c++11
 
@@ -17,26 +11,7 @@ CXX=g++
 
 #---------------------------------------------------------------------------------------------------
 
-all: $(TARGET)
-
-$(OUTPUT_DIR)/boot_disk.img: $(OUTPUT_DIR)/mbr.img $(OUTPUT_DIR)/vbr.img
-	dd if=/dev/zero of=$(OUTPUT_DIR)/boot_disk.img bs=512 count=1024
-	dd if=$(OUTPUT_DIR)/mbr.img of=$(OUTPUT_DIR)/boot_disk.img bs=512 count=1 conv=notrunc
-	dd if=$(OUTPUT_DIR)/vbr.img of=$(OUTPUT_DIR)/boot_disk.img bs=512 seek=$(partition_1_start) conv=notrunc
-
-$(OUTPUT_DIR)/vbr.img: $(OUTPUT_DIR)/vbr_bootstrap.bin
-	dd if=$(OUTPUT_DIR)/vbr_bootstrap.bin of=$(OUTPUT_DIR)/vbr.img
-
-
-$(OUTPUT_DIR)/mbr.img: $(OUTPUT_DIR)/partition_table.bin $(OUTPUT_DIR)/mbr_bootstrap.bin
-	dd if=/dev/zero of=$(OUTPUT_DIR)/mbr.img bs=512 count=1
-	dd if=$(OUTPUT_DIR)/mbr_bootstrap.bin of=$(OUTPUT_DIR)/mbr.img
-	dd if=$(OUTPUT_DIR)/partition_table.bin of=$(OUTPUT_DIR)/mbr.img bs=1 seek=446
-	cat bootsignature >> $(OUTPUT_DIR)/mbr.img
-
-
-$(OUTPUT_DIR)/partition_table.bin: $(OUTPUT_DIR)/partition_table_constructor
-	./$(OUTPUT_DIR)/partition_table_constructor < example/example.in
+all: $(OUTPUT_DIR)/partition_table_constructor $(OUTPUT_DIR)/mbr_bootstrap.bin
 
 
 # executables --------------------------------------------------------------------------------------
@@ -112,14 +87,11 @@ $(TOOL_DIR)/typedefs.h: ;
 
 # bootcode binaries --------------------------------------------------------------------------------
 
-$(OUTPUT_DIR)/mbr_bootstrap.bin: $(BOOTCODE_DIR)/mbr_bootstrap.asm
-	$(ASM) -f bin -o $(OUTPUT_DIR)/mbr_bootstrap.bin $(BOOTCODE_DIR)/mbr_bootstrap.asm
-
-$(OUTPUT_DIR)/vbr_bootstrap.bin: $(BOOTCODE_DIR)/vbr_bootstrap.asm
-	$(ASM) -f bin -o $(OUTPUT_DIR)/vbr_bootstrap.bin $(BOOTCODE_DIR)/vbr_bootstrap.asm
+$(OUTPUT_DIR)/mbr_bootstrap.bin: mbr_bootstrap.asm
+	$(ASM) -f bin -o $(OUTPUT_DIR)/mbr_bootstrap.bin mbr_bootstrap.asm
 
 
-# utilities
+# utilities ----------------------------------------------------------------------------------------
 
 clean:
 	rm -rf $(OUTPUT_DIR)
