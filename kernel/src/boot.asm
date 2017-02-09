@@ -9,6 +9,7 @@ BITS 32
 	%define STACK_SIZE 64
 	
 
+extern long_mode_start
 	
 global _start
 
@@ -24,11 +25,72 @@ _start:
 	call checkMultiboot
 	call checkCPUID
 	call checkLongMode
+
+
+	;; enable paging and switch to long mode
+	call initPageTables
+	call enablePaging
+
+	;; load GDT, reads 16&32
+	lgdt [gdt64.lgdtPacket]
+
+	jmp gdt64.code:long_mode_start
+
+
+;;; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; enable paging
+enablePaging:
+	;; Make page table cpu accessable
+	mov eax, page_map	; CPU reads page map out of cr3
+	mov cr3, eax
+
+	;; Enable physical address extension (PAE)
+	mov eax, cr4		; PAE flag is in cr4
+	or eax, 1 << 5		; Enable PAE flag
+	mov cr4, eax		; write changes
 	
-	mov dword [0xb8000], 0x2f4b2f4f
-	hlt					 
+	;; Enable long mode
+	mov ecx, 0xC0000080	; point ecx to EFER MSR (long mode bit is there)
+	rdmsr			; read EFER MSR into edx:eax
+	or eax, 1 << 8		; set long mode bit
+	wrmsr			; write edx:eax to EFER MSR
 
+	;; Enable paging
+	mov eax, cr0		; paging bit is in cr0
+	or eax, 1 << 31		; set paging bit
+	mov cr0, eax		; write changes
 
+	ret
+
+	
+;;; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; initialize page table system
+initPageTables:
+	mov eax, pointer_table
+	or eax, 0b11		    ; set 'entry present' and 'writable' bits
+	mov [page_map], eax	    ; link pointer table as first entry in page 
+	                            ; map 
+
+	mov eax, page_directory
+	or eax, 0b11		    ; set 'entry present' and 'writable' bits
+	mov [pointer_table], eax    ; link page directory as first entry in
+				    ; pointer table
+
+	mov ecx, 0
+	.entryLoop:
+		mov eax, 0x200000   ; each page frame is 2MiB
+		mul ecx
+		or eax, 0b10000011 ; set 'present', 'writable', and 'huge' bits
+		; entries are 8 bytes, advance appropriately + copy entry there
+		mov [page_directory + ecx * 8], eax
+
+		inc ecx
+		cmp ecx, 512
+		jne .entryLoop
+
+	ret
+
+	
 ;;; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; check if long mode is supported by processor
 checkLongMode:
@@ -46,6 +108,7 @@ checkLongMode:
 	ret
 .checkFailed:
 	mov al, LM_ERROR
+	jmp error
 
 	
 ;;; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -82,7 +145,6 @@ checkCPUID:
 	jmp error
 
 
-	
 ;;; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; check for magic number indicating kernel loaded in multiboot compliance
 checkMultiboot:
@@ -107,10 +169,40 @@ error:
 	hlt
 
 
+	
 ;;; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; bss is for statically declared data
 ;;; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 section .bss
+align 4096
+	
+;; Reserve space for paging 
+page_map:			; Reserve space for Page-Map Level-4 Table
+	resb 4096
+pointer_table:			; Reserve space for Page-Directory Pointer Table
+	resb 4096
+page_directory:			; Reserve space for Page-Directory Table
+	resb 4096
+	
+;; Reserve space for stack
 stack_bottom:
 	resb STACK_SIZE		; Reserve 64 bytes of memory for stack
 stack_top:	
+
+
+	
+;;; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; read-only data
+;;; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+section .rodata
+gdt64:
+	dq 0			; GDT must always start with a 0 entry 
+.code: equ $ - gdt64		; offset of code segment in GDT
+	;; sets executable, code segment, present, and 64-bit entry bits
+	dq (1 << 43) | (1 << 44) | (1 << 47) | (1 << 53)
+
+;; info packet containing size and start of gdt for lgdt instruction 
+.lgdtPacket:		 
+	dw $ - gdt64 - 1	; GDT size must always be greater than 0 and is
+				; reported as size - 1
+	dq gdt64		; Address of GDT
