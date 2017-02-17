@@ -6,8 +6,8 @@ BITS 32
 
 	%define MB_MAGIC 0x36d76289	; Magic number per multiboot standard
 
-	%define STACK_SIZE 64
-	
+	%define STACK_SIZE 4096
+	%define PAGE_SIZE 4096
 
 extern long_mode_start
 	
@@ -20,6 +20,7 @@ global _start
 section .text
 _start:
 	mov esp, stack_top	; Set up stack
+	mov edi, ebx		; Move multiboot info addr into first param reg
 
 	;; confirm in post-multiboot env, long mode supported
 	call checkMultiboot
@@ -31,12 +32,40 @@ _start:
 	call initPageTables
 	call enablePaging
 
+	;; enable sse
+	call enableSSE
+
 	;; load GDT, reads 16&32
 	lgdt [gdt64.lgdtPacket]
 
 	jmp gdt64.code:long_mode_start
 
 
+;;; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Enable SSE for Rust
+enableSSE:
+	;; Test if SSE supported
+	mov eax, 1		; Get feature bits
+	cpuid
+	test edx, 1 << 25
+	jz .checkFailed
+
+	;; Enable SSE
+	mov eax, cr0		
+	and ax, 0xFFFB		; disable floating point coprocessor emulation
+	or ax, 0x2		; enable floating point coprocessor monitoring
+	mov cr0, eax		; write changes
+	
+	mov eax, cr4
+	or ax, 3 << 9		; enable use of SSE instructions and FPU
+				; enable unmasked sse exceptions
+	mov cr4, eax
+
+	ret
+.checkFailed:	
+	mov al, "a"
+	jmp error
+	
 ;;; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; enable paging
 enablePaging:
@@ -178,11 +207,11 @@ align 4096
 	
 ;; Reserve space for paging 
 page_map:			; Reserve space for Page-Map Level-4 Table
-	resb 4096
+	resb PAGE_SIZE
 pointer_table:			; Reserve space for Page-Directory Pointer Table
-	resb 4096
+	resb PAGE_SIZE
 page_directory:			; Reserve space for Page-Directory Table
-	resb 4096
+	resb PAGE_SIZE
 	
 ;; Reserve space for stack
 stack_bottom:

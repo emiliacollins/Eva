@@ -5,17 +5,23 @@ SECTIONS {
 
 	 .boot :
 	 {
-		/* Place multiboot header at beginning */
-		*(.multiboot_header)
+		/* Place multiboot header at beginning, make sure not removed */
+		KEEP(*(.multiboot_header))
 	 }
+
+	 /* Counteract rust compiler optimizations to defragment kernel sections */
 	 .text :
 	 {
-		*(.text)
+		*(.text .text.*)
+	 }
+	 .rodata :
+	 {
+		*(.rodata .rodata.*)
+	 }
+	 .data.rel.ro :
+	 {
+		*(.data.rel.ro.local*)
+		*(.data.rel.ro .data.rel.ro.*)
 	 }
 
-
-	 /* .data : */
-	 /* { */
-	 /* 	*(.data) */
-	 /* } */
 }

@@ -1,0 +1,21 @@
+[package]
+name="eva_os"
+version="0.0.1"
+authors = ["Eric Collins <ericscollins@protonmail.com>"]
+
+[lib]
+crate-type=["staticlib"]
+
+[dependencies]
+rlibc = "0.1.4"
+volatile = "0.1.0"
+spin = "0.4.5"
+multiboot2 = "0.1.0"
+
+
+# let unwinding be unsupported
+[profile.dev]
+panic = "abort"
+
+[profile.release]
+panic = "abort"
