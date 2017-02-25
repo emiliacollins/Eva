@@ -42,7 +42,7 @@
 //##################################################################################################
 
 
-use memory::{Frame, FrameAllocator};
+use memory::{Frame, FrameAllocator, PAGE_SIZE};
 use multiboot2::{MemoryArea, MemoryAreaIter};
 
 
@@ -52,18 +52,18 @@ use multiboot2::{MemoryArea, MemoryAreaIter};
 
 
 //==================================================================================================
-struct AlphaFrameAllocator {
+pub struct AlphaFrameAllocator {
 //--------------------------------------------------------------------------------------------------
 //  
 //==================================================================================================
 
-    current_frame: Frame,
-    current_memory_section: Option<&'static MemoryArea>,
+    curr_frame_addr: usize,
+    curr_section: Option<&'static MemoryArea>,
     section_iterator: MemoryAreaIter,
-    kernel_start: Frame,
-    kernel_end: Frame,
-    multiboot_info_start: Frame,
-    multiboot_info_end: Frame,
+    kernel_start: usize,
+    kernel_length: usize,
+    multiboot_start: usize,
+    multiboot_length: usize,
 }
 
 
@@ -76,8 +76,99 @@ struct AlphaFrameAllocator {
 impl AlphaFrameAllocator {
 //==================================================================================================
 
-}
 
+    //==============================================================================================
+    pub fn new(kernel_start: usize, kernel_length: usize, multiboot_start: usize, multiboot_length: usize,
+               mut memory_areas: MemoryAreaIter) -> AlphaFrameAllocator {
+    //----------------------------------------------------------------------------------------------
+    // Pseudo-constructor for AlphaFrameAllocator
+    //----------------------------------------------------------------------------------------------
+    // TAKES:   kernel_start     -> starting address of the kernel
+    //          kernel_length    -> length of kernel memory
+    //          multiboot_start  -> starting address of the multiboot information structure
+    //          multiboot_length -> length of multiboot information structure
+    //          memory_areas     -> iterator over sections of memory
+    //    
+    // RETURNS: a frame allocator that cannot free up frames, only allocate frames
+    //==============================================================================================
+
+        AlphaFrameAllocator {
+            curr_frame_addr: 0,
+            curr_section: memory_areas.next(),
+            section_iterator: memory_areas,
+            kernel_start: kernel_start,
+            kernel_length: kernel_length,
+            multiboot_start: multiboot_start,
+            multiboot_length: multiboot_length,
+                
+        }
+    }
+
+    
+    //==============================================================================================
+    fn section_needed_correction(&mut self) -> bool {
+    //----------------------------------------------------------------------------------------------
+    // Fixes the current section if necessary, and reports back if a correction was made.
+    //----------------------------------------------------------------------------------------------    
+    // TAKES:   nothing
+    // 
+    // RETURNS: true  -> a change was made to self.curr_section
+    //          false -> no changes were made
+    //==============================================================================================
+        
+        match self.curr_section {
+            None => false,
+            Some(section) => {
+                // Check if frame has passed last full frame in section
+                if (self.curr_frame_addr >= (section.base_addr + section.length) as usize / PAGE_SIZE * PAGE_SIZE + PAGE_SIZE) {
+
+                    // Increment the section
+                    self.curr_section = self.section_iterator.next();
+                    true;
+                }
+
+                false
+            }
+        }
+    }
+
+
+    //==============================================================================================
+    fn frame_needed_correction(&mut self) -> bool {
+    //----------------------------------------------------------------------------------------------
+    // Fixes the current frame if necessary, and reports back if a correction was made.
+    //----------------------------------------------------------------------------------------------    
+    // TAKES:   nothing
+    // 
+    // RETURNS: true  -> a change was made to self.curr_frame_addr
+    //          false -> no changes were made
+    //==============================================================================================
+
+        match self.curr_section {
+            None => false,
+            Some(section) => {
+                // Check if frame needs to be fast-forwarded to new section
+                if (self.curr_frame_addr < section.base_addr as usize) {
+
+                    // Fast-forward frame to first full frame in section
+                    self.curr_frame_addr = (section.base_addr as usize + PAGE_SIZE - 1) / PAGE_SIZE * PAGE_SIZE;
+                    return true
+                }
+                // Check that frame does not contain kernel or multiboot memory
+                else if (self.curr_frame_addr >= self.kernel_start && self.curr_frame_addr < self.kernel_start + self.kernel_length ||
+                         self.curr_frame_addr >= self.multiboot_start && self.curr_frame_addr < self.multiboot_start + self.multiboot_length) {
+                
+                    // Increment the frame
+                    self.curr_frame_addr = self.curr_frame_addr + PAGE_SIZE;
+                    return true
+                }
+
+                // Frame did not need correction ls
+                false
+            },
+        }
+    }
+}
 
 
 //==================================================================================================
@@ -96,38 +187,20 @@ impl FrameAllocator for AlphaFrameAllocator {
     //          None      -> No frames available
     //==============================================================================================
 
-        match self.current_memory_section {
-            None => None,
-            Some(section) => {
-                let section_frame = Frame::frame_containing_address(section.base_addr as usize);
-                
-                // Check frame starts within current memory section
-                if (self.current_frame.frame_num < Frame::frame_containing_address(section.base_addr as usize).frame_num) {
-                    self.current_frame = Frame::frame_containing_address(section.base_addr as usize);
-                }
-                
-                // Check frame ends within current memory section
-                if (self.current_frame.frame_num >= Frame::frame_containing_address((section.base_addr+section.length) as usize).frame_num) {
-                    self.current_memory_section = self.section_iterator.next();
-                    self.allocate_frame()
-                }
-                // Ensure section is not a kernel section or multiboot info section
-                else if (section_frame.frame_num <= self.kernel_end.frame_num &&
-                         section_frame.frame_num >= self.kernel_start.frame_num ||
-                         section_frame.frame_num >= self.multiboot_info_start.frame_num &&
-                         section_frame.frame_num <= self.multiboot_info_end.frame_num) {
+        // Fix frame and section as necessary
+        while (AlphaFrameAllocator::section_needed_correction(self) || AlphaFrameAllocator::frame_needed_correction(self)) {};
 
-                    self.current_memory_section = self.section_iterator.next();
-                    self.allocate_frame()
-                }
-                // Everything checks out
-                else {
-                    let result: Option<Frame> = Some(self.current_frame);
-                    self.current_frame = Frame { frame_num: self.current_frame.frame_num + 1 };
-                    result
-                }
+        // Either section iterator ran out, or frame points at valid frame
+        match self.curr_section {
+            None => None,
+            _ => {
+                let result = Frame { frame_num: self.curr_frame_addr / PAGE_SIZE };
+                self.curr_frame_addr = self.curr_frame_addr + PAGE_SIZE;
+                Some(result)
             }
         }
+
+
     }
 
     
@@ -141,6 +214,6 @@ impl FrameAllocator for AlphaFrameAllocator {
     // RETURNS: nothing
     //==============================================================================================
 
-
+        unimplemented!();
     }
 }

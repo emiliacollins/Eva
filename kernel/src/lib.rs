@@ -57,6 +57,8 @@ extern crate rlibc;                     // minimal libc-style ops
 extern crate volatile;                  // mark operations as volatile to prevent optimizations
 extern crate spin;                      // minimal "busy-loop" mutex support
 extern crate multiboot2;                // module to parse multiboot v2 info from memory
+#[macro_use]
+extern crate bitflags;                  // bitflags used in paging
 
 
 //==================================================================================================
@@ -64,7 +66,13 @@ extern crate multiboot2;                // module to parse multiboot v2 info fro
 
 #[macro_use]
 pub mod vga_interface;                  // interface for more easily interacting with vga buffer
-pub mod memory;
+mod memory;
+
+
+//==================================================================================================
+
+
+use memory::AlphaFrameAllocator;
 
 
 //##################################################################################################
@@ -136,20 +144,40 @@ pub extern fn rust_main(multiboot_info_start: usize) {
     vga_interface::WRITER.lock().clear_screen();
     
     let boot_info = unsafe {multiboot2::load(multiboot_info_start)};
-    let memory_map_tag = boot_info.memory_map_tag().expect("No memory map tag found!");
+    let memory_map_tag = boot_info.memory_map_tag()
+        .expect("Memory map tag required");
 
-    println!("Memory Areas: ");
-
+    println!("memory areas:");
     for area in memory_map_tag.memory_areas() {
-        println!("start: {:x} -> end: {:x}", area.base_addr, area.base_addr + area.length);
+        println!("    start: 0x{:x}, length: 0x{:x}",
+                 area.base_addr, area.length);
     }
 
-    println!("Kernel Sections: ");
-    
     let elf_sections_tag = boot_info.elf_sections_tag().expect("No kernel-elf tag found!");
-    for section in elf_sections_tag.sections() {
-        println!("addr: 0x{:x}, size 0x{:}, flags:0x{:x}",section.addr,section.size,section.flags);
+
+    let mut  elf_sections_iterator = elf_sections_tag.sections();
+    
+    let kernel_start: usize = elf_sections_iterator.clone().map(|e| e.addr).min().unwrap() as usize;
+    let kernel_end: usize = elf_sections_iterator.clone().map(|e| e.addr+e.size).max().unwrap() as usize;
+    let multiboot_start: usize = multiboot_info_start;
+    let multiboot_end: usize = multiboot_start + boot_info.total_size as usize;
+    let mut memory_section_iterator = boot_info.memory_map_tag().unwrap().memory_areas();
+
+    println!("Kernel start: 0x{:x}, Kernel end: 0x{:x}", kernel_start, kernel_end);
+    println!("Multiboot start: 0x{:x}, Multiboot end 0x{:x}", multiboot_start, multiboot_end);
+
+    let mut allocator = AlphaFrameAllocator::new(kernel_start, kernel_end, multiboot_start, multiboot_end, memory_section_iterator);
+
+    use memory::FrameAllocator;
+    use memory::Frame;
+    for i in 0.. {
+        match allocator.allocate_frame() {
+            None => { println!("{}", i); break; },
+            _ => { },
+        }
     }
+
+    println!("wow");
     
 
     loop {}

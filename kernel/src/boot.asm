@@ -117,6 +117,11 @@ initPageTables:
 		cmp ecx, 512
 		jne .entryLoop
 
+	;; Recursively map the page map 
+	mov eax, page_map
+	or eax, 0b11
+	mov [page_map + 511 * 8], eax
+	
 	ret
 
 	
