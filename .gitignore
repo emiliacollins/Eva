@@ -3,3 +3,4 @@ bochsout.txt
 build/
 target/
 *~
+Cargo.lock

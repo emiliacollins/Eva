@@ -214,6 +214,6 @@ impl FrameAllocator for AlphaFrameAllocator {
     // RETURNS: nothing
     //==============================================================================================
 
-        unimplemented!();
+        //unimplemented!();
     }
 }

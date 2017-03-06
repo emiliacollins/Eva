@@ -43,6 +43,7 @@
 
 
 use memory::paging::entry::*;
+use memory::FrameAllocator;
 use memory::paging::ENTRY_COUNT;
 use core::ops::{Index,IndexMut};
 use core::marker::PhantomData;
@@ -53,7 +54,7 @@ use core::marker::PhantomData;
 //##################################################################################################
 
 
-const PAGE_MAP:   *mut Table<PageMap> = 0xFFFF_FFFF_FFFF_F000 as *mut _;
+pub const PAGE_MAP:   *mut Table<PageMap> = 0xFFFF_FFFF_FFFF_F000 as *mut _;
 
 
 //##################################################################################################
@@ -99,7 +100,7 @@ pub enum PageTable {}
 
 
 //==================================================================================================
-struct Table<Level: TableLevel> {
+pub struct Table<Level: TableLevel> {
 //--------------------------------------------------------------------------------------------------
 // Allows read and write access to table in multi-level paging system.
 //==================================================================================================
@@ -176,7 +177,7 @@ impl <Level: MetaLevel> Table<Level> {
     //          None      -> entry was inactive, no valid table address
     //==============================================================================================
 
-        if (self[index].flags().contains(PRESENT)) {
+        if (self[index].flags().contains(PRESENT) && !self[index].flags().contains(HUGE_PAGE)) {
             Some((self as *const _ as usize) << 9 | index << 12)
         }
         else {
@@ -212,9 +213,27 @@ impl <Level: MetaLevel> Table<Level> {
     //==============================================================================================
 
         self.next_table_addr(index).map(|addr| unsafe {&mut *(addr as *mut _)})
-    }    
-}
+    }
 
+
+    //==============================================================================================
+    pub fn next_table_create<A:FrameAllocator>(&mut self, i: usize, allocator: &mut A) -> &mut Table<Level::NextLevel> {
+    //----------------------------------------------------------------------------------------------
+    //
+    //----------------------------------------------------------------------------------------------
+    //
+    //
+    //
+    //==============================================================================================
+
+        if (self.next_table(i).is_none()) {
+            self.entries[i].set(allocator.allocate_frame().expect("unable to allocate_frame"), (PRESENT | WRITABLE));
+            self.next_table_mut(i).unwrap().clear();
+                                
+        }
+        self.next_table_mut(i).unwrap()
+    }
+}
 
 //==================================================================================================
 impl<Level: TableLevel> Index<usize> for Table<Level> {

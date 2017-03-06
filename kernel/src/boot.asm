@@ -6,7 +6,7 @@ BITS 32
 
 	%define MB_MAGIC 0x36d76289	; Magic number per multiboot standard
 
-	%define STACK_SIZE 4096
+	%define STACK_SIZE 8192
 	%define PAGE_SIZE 4096
 
 extern long_mode_start
@@ -95,6 +95,12 @@ enablePaging:
 ;;; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; initialize page table system
 initPageTables:
+	
+	;; Recursively map the page map 
+	mov eax, page_map
+	or eax, 0b11
+	mov [page_map + 511 * 8], eax
+
 	mov eax, pointer_table
 	or eax, 0b11		    ; set 'entry present' and 'writable' bits
 	mov [page_map], eax	    ; link pointer table as first entry in page 
@@ -116,11 +122,6 @@ initPageTables:
 		inc ecx
 		cmp ecx, 512
 		jne .entryLoop
-
-	;; Recursively map the page map 
-	mov eax, page_map
-	or eax, 0b11
-	mov [page_map + 511 * 8], eax
 	
 	ret
 

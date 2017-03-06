@@ -46,6 +46,7 @@
 #![feature(unique)]
 #![feature(const_fn)]
 #![no_std]              // disallow linking to standard libraries, we need to be static
+#![allow(unused_parens)]
 
 
 //##################################################################################################
@@ -142,44 +143,34 @@ pub extern fn rust_main(multiboot_info_start: usize) {
 //==================================================================================================
 
     vga_interface::WRITER.lock().clear_screen();
-    
-    let boot_info = unsafe {multiboot2::load(multiboot_info_start)};
-    let memory_map_tag = boot_info.memory_map_tag()
-        .expect("Memory map tag required");
 
-    println!("memory areas:");
-    for area in memory_map_tag.memory_areas() {
-        println!("    start: 0x{:x}, length: 0x{:x}",
-                 area.base_addr, area.length);
-    }
-
-    let elf_sections_tag = boot_info.elf_sections_tag().expect("No kernel-elf tag found!");
-
-    let mut  elf_sections_iterator = elf_sections_tag.sections();
-    
-    let kernel_start: usize = elf_sections_iterator.clone().map(|e| e.addr).min().unwrap() as usize;
-    let kernel_end: usize = elf_sections_iterator.clone().map(|e| e.addr+e.size).max().unwrap() as usize;
-    let multiboot_start: usize = multiboot_info_start;
-    let multiboot_end: usize = multiboot_start + boot_info.total_size as usize;
-    let mut memory_section_iterator = boot_info.memory_map_tag().unwrap().memory_areas();
-
-    println!("Kernel start: 0x{:x}, Kernel end: 0x{:x}", kernel_start, kernel_end);
-    println!("Multiboot start: 0x{:x}, Multiboot end 0x{:x}", multiboot_start, multiboot_end);
-
-    let mut allocator = AlphaFrameAllocator::new(kernel_start, kernel_end, multiboot_start, multiboot_end, memory_section_iterator);
-
-    use memory::FrameAllocator;
-    use memory::Frame;
-    for i in 0.. {
-        match allocator.allocate_frame() {
-            None => { println!("{}", i); break; },
-            _ => { },
+    let mut allocator;
+    {
+        let kernel_start;
+        let kernel_end;
+        let multiboot_start;
+        let multiboot_end;
+        let mut memory_section_iterator;
+        {
+            let boot_info = unsafe {multiboot2::load(multiboot_info_start)};
+            let memory_map_tag = boot_info.memory_map_tag().expect("Memory map tag required");
+            let elf_sections_tag = boot_info.elf_sections_tag().expect("No kernel-elf tag found!");
+            let mut  elf_sections_iterator = elf_sections_tag.sections();
+            
+            kernel_start = elf_sections_iterator.clone().map(|e| e.addr).min().unwrap() as usize;
+            kernel_end = elf_sections_iterator.clone().map(|e| e.addr+e.size).max().unwrap() as usize;
+            multiboot_start = multiboot_info_start;
+            multiboot_end = multiboot_start + boot_info.total_size as usize;
+            memory_section_iterator = boot_info.memory_map_tag().unwrap().memory_areas();
         }
+        allocator = AlphaFrameAllocator::new(kernel_start, kernel_end, multiboot_start, multiboot_end, memory_section_iterator);
     }
-
-    println!("wow");
+    
     
 
+    memory::paging::test_paging(&mut allocator);
+    println!("SUCCESS");
+    
     loop {}
 }
 
