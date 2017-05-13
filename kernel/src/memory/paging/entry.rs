@@ -43,6 +43,9 @@
 
 
 use memory::Frame;
+use multiboot2::{ElfSection,ELF_SECTION_ALLOCATED,ELF_SECTION_WRITABLE,ELF_SECTION_EXECUTABLE};
+
+
 
 
 //##################################################################################################
@@ -204,5 +207,25 @@ impl PageEntry {
             Some(frame) => { (frame.address() as u64) | flags.bits() },
             None        => { flags.bits() }, 
         };
+    }
+}
+
+
+//==================================================================================================
+impl EntryFlags {
+    pub fn from_elf_section(section: &ElfSection) -> EntryFlags {
+        let mut result = EntryFlags::empty();
+        if (section.flags().contains(ELF_SECTION_ALLOCATED)) {
+            result |= PRESENT;
+        }
+
+        if (section.flags().contains(ELF_SECTION_WRITABLE)) {
+            result |= WRITABLE;
+        }
+
+        if (!section.flags().contains(ELF_SECTION_EXECUTABLE)) {
+            result |= NO_EXEC;
+        }
+        result
     }
 }

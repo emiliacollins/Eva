@@ -60,6 +60,7 @@ extern crate spin;                      // minimal "busy-loop" mutex support
 extern crate multiboot2;                // module to parse multiboot v2 info from memory
 #[macro_use]
 extern crate bitflags;                  // bitflags used in paging
+extern crate x86;
 
 
 //==================================================================================================
@@ -74,6 +75,8 @@ mod memory;
 
 
 use memory::AlphaFrameAllocator;
+use x86::shared::msr::{IA32_EFER,rdmsr,wrmsr};
+use x86::shared::control_regs::{cr0,cr0_write,CR0_WRITE_PROTECT};
 
 
 //##################################################################################################
@@ -133,6 +136,27 @@ pub extern fn panic_fmt(fmt: core::fmt::Arguments, file: &'static str, line: u32
 
 
 //##################################################################################################
+//********************************************* UTILITIES ******************************************
+//##################################################################################################
+
+
+//==================================================================================================
+fn enable_write_protection() {
+//--------------------------------------------------------------------------------------------------
+//    
+//--------------------------------------------------------------------------------------------------
+//
+//
+//
+//==================================================================================================
+
+    unsafe {
+        wrmsr(IA32_EFER, rdmsr(IA32_EFER) | 1 << 11); 
+        cr0_write(cr0() | CR0_WRITE_PROTECT);
+    }
+}
+
+//##################################################################################################
 //*********************************************** MAIN *********************************************
 //##################################################################################################
 
@@ -144,33 +168,31 @@ pub extern fn rust_main(multiboot_info_start: usize) {
 
     vga_interface::WRITER.lock().clear_screen();
 
-    let mut allocator;
-    {
-        let kernel_start;
-        let kernel_end;
-        let multiboot_start;
-        let multiboot_end;
-        let mut memory_section_iterator;
-        {
-            let boot_info = unsafe {multiboot2::load(multiboot_info_start)};
-            let memory_map_tag = boot_info.memory_map_tag().expect("Memory map tag required");
-            let elf_sections_tag = boot_info.elf_sections_tag().expect("No kernel-elf tag found!");
-            let mut  elf_sections_iterator = elf_sections_tag.sections();
-            
-            kernel_start = elf_sections_iterator.clone().map(|e| e.addr).min().unwrap() as usize;
-            kernel_end = elf_sections_iterator.clone().map(|e| e.addr+e.size).max().unwrap() as usize;
-            multiboot_start = multiboot_info_start;
-            multiboot_end = multiboot_start + boot_info.total_size as usize;
-            memory_section_iterator = boot_info.memory_map_tag().unwrap().memory_areas();
-        }
-        allocator = AlphaFrameAllocator::new(kernel_start, kernel_end, multiboot_start, multiboot_end, memory_section_iterator);
-    }
-    
-    
+    let boot_info = unsafe { multiboot2::load(multiboot_info_start) };
 
-    memory::paging::test_paging(&mut allocator);
-    println!("SUCCESS");
+    let memory_map_tag = boot_info.memory_map_tag().expect("Need memory map tag!");
+
+    let elf_sections_tag = boot_info.elf_sections_tag().expect("Need ELF sections tag");
+
+    let kernel_start = elf_sections_tag.sections().map(|s| s.addr).min().unwrap();
+
+    let kernel_end = elf_sections_tag.sections().map(|s| s.addr + s.size).max().unwrap();
     
+    let multiboot_end = multiboot_info_start + (boot_info.total_size as usize);
+
+    let mut frame_allocator = memory::AlphaFrameAllocator::new(kernel_start as usize, kernel_end as usize,
+                                                               multiboot_info_start, multiboot_end,
+                                                               memory_map_tag.memory_areas());
+    
+    enable_write_protection();
+
+    memory::paging::remap_kernel(&mut frame_allocator, boot_info);
+
+    println!("It works!");
+    use memory::FrameAllocator;
+    frame_allocator.allocate_frame();
+    
+    println!("Still working!");
     loop {}
 }
 

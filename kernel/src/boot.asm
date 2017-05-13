@@ -6,7 +6,7 @@ BITS 32
 
 	%define MB_MAGIC 0x36d76289	; Magic number per multiboot standard
 
-	%define STACK_SIZE 8192
+	%define STACK_SIZE 4096 * 4
 	%define PAGE_SIZE 4096
 
 extern long_mode_start

@@ -26,7 +26,7 @@ $(RUST_BUILD_DIR)/libeva_os.a: src/lib.rs src/vga_interface.rs Cargo.toml src/me
 	cargo build --target=x86_64-unknown-linux-gnu
 
 run: all
-	qemu-system-x86_64 -m 2G -cdrom build/evaos.iso
+	qemu-system-x86_64 -d int --no-reboot -m 2G -cdrom build/evaos.iso
 
 
 clean:

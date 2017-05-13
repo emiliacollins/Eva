@@ -188,7 +188,9 @@ impl FrameAllocator for AlphaFrameAllocator {
     //==============================================================================================
 
         // Fix frame and section as necessary
-        while (AlphaFrameAllocator::section_needed_correction(self) || AlphaFrameAllocator::frame_needed_correction(self)) {};
+        while (AlphaFrameAllocator::section_needed_correction(self) ||
+               AlphaFrameAllocator::frame_needed_correction(self)) {};
+
 
         // Either section iterator ran out, or frame points at valid frame
         match self.curr_section {

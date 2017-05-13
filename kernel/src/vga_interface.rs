@@ -53,7 +53,7 @@ use core::fmt;
 //##################################################################################################
 
 
-const VGA_BUFFER_START : u32    = 0xB8000;
+pub const VGA_BUFFER_START : u32    = 0xB8000;
 const VGA_NUM_ROWS     : usize  = 25;
 const VGA_NUM_COLS     : usize  = 80;
 

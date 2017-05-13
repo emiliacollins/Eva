@@ -1,6 +1,6 @@
 //##################################################################################################
 //#                                                                                                #
-//# Kernel/memory: mod.rs                                                                          #
+//# Kernel/memory/paging temp_page.rs                                                              #
 //#                                                                                                #
 //# AUTHOR: Eric S. Collins <ericscollins@protonmail.com>                                          #
 //#                                                                                                #
@@ -29,131 +29,198 @@
 //#                                                                                                #
 //#                                                                                                #
 //# NOTE:   The majority of code in this file was written while closely following a tutorial       #
-//#         createad by Philip Opperman <contact@phil-opp.com>. The tutorial may be found at:      #
+//#         created by Philip Opperman <contact@phil-opp.com>. The tutorial may be found at:       #
 //#                                    http://os.phil-opp.com/                                     #
-//#         Source code used the above tutorial may be found at:                                   #
+//#         Source code used in the above tutorial may be found at:                                #
 //#                             https://github.com/phil-opp/blog_os                                #
 //#                                                                                                #
 //##################################################################################################
 
 
 //##################################################################################################
-//*************************************** DEPENDENCIES *********************************************
+//**************************************** DEPENDENCIES ********************************************
 //##################################################################################################
 
 
-pub use self::alpha_frame_allocator::AlphaFrameAllocator;
-use self::paging::PhysicalAddress;
-
-//==================================================================================================
-
-
-pub mod alpha_frame_allocator;
-pub mod paging;
-
-//##################################################################################################
-//*********************************** STATIC & CONST DATA ******************************************
-//##################################################################################################
-
-
-pub const PAGE_SIZE: usize = 4096;
+use super::{Page,ActivePageTable,VirtualAddress};
+use super::entry::WRITABLE;
+use memory::{Frame,FrameAllocator};
+use super::table::{Table,PageTable};
 
 
 //##################################################################################################
-//************************************ TRAIT DEFINITIONS *******************************************
+//******************************************** CONSTANTS *******************************************
+//##################################################################################################
+
+
+const MINI_FRAME_COUNT: usize = 3;
+
+
+//##################################################################################################
+//************************************** STRUCT DEFINITIONS ****************************************
 //##################################################################################################
 
 
 //==================================================================================================
-pub trait FrameAllocator {
+pub struct TempPage {
+//--------------------------------------------------------------------------------------------------
+// A page easily mapped and unmapped for temporary, nonstandard use of the paging module.
 //==================================================================================================
+    
+    page: Page,
+    allocator: MiniAllocator,
+}
+
+
+//==================================================================================================
+struct MiniAllocator([Option<Frame>; MINI_FRAME_COUNT]);
+//--------------------------------------------------------------------------------------------------
+// An allocator holding exactly three frames, used when manipulating inactive page tables.
+//==================================================================================================
+
+
+//##################################################################################################
+//************************************ STRUCT IMPLEMENTATIONS **************************************
+//##################################################################################################
+
+
+//==================================================================================================
+impl TempPage {
+//==================================================================================================
+    
 
     //==============================================================================================
-    fn allocate_frame(&mut self) -> Option<Frame>;
+    pub fn new<F:FrameAllocator>(page: Page, allocator: &mut F) -> TempPage {
     //----------------------------------------------------------------------------------------------
-    // Attempt to allocate a frame.
+    // Pseudoconstructor for TempPage. Obtains necessary frames for mapping from given allocator at
+    // construction.    
     //----------------------------------------------------------------------------------------------
-    // TAKES:   nothing
+    // TAKES:   page      -> page to map TempPage to
+    //          allocator -> allocator to obtain frames from necessary for mapping
     //
-    // RETURNS: Some(...) -> A frame object, if a frame was available
-    //          None      -> No frames available
+    // RETURNS: TempPage constructed with given parameters
     //==============================================================================================
+
+        TempPage {
+            page: page,
+            allocator: MiniAllocator::new(allocator),
+        }
+    }
+
+    
+    //==============================================================================================
+    pub fn map_to_frame(&mut self, frame: Frame, active_table: &mut ActivePageTable) -> VirtualAddress {
+    //----------------------------------------------------------------------------------------------
+    // Map this temporary page to the given frame in the given active page table.
+    //----------------------------------------------------------------------------------------------
+    // TAKES:   frame        -> frame to map page to
+    //          active_table -> table to map frame in
+    //
+    // RETURNS: Virtual address of the temporary page.
+    //==============================================================================================
+
+        active_table.map_page_to_frame(self.page, frame, WRITABLE, &mut self.allocator);
+        self.page.starting_address()
+    }
 
 
     //==============================================================================================
-    fn deallocate_frame(&mut self, frame:Frame);
+    pub fn map_to_frame_as_table(&mut self, frame: Frame, active_table: &mut ActivePageTable)
+                                 -> &mut Table<PageTable> {
     //----------------------------------------------------------------------------------------------
-    // Deallocate a frame.
+    // Perform same action as map_to_frame, but return VirtualAddress casted as a PageTable.
     //----------------------------------------------------------------------------------------------
-    // TAKES:   frame -> the frame to deallocate
+    // TAKES:   frame        -> frame to map page to
+    //          active_table -> table to map frame in
+    //
+    // RETURNS: a mutable reference to a PageTable
+    //==============================================================================================
+
+        unsafe { &mut *(self.map_to_frame(frame, active_table) as *mut Table<PageTable>) }
+    }  
+
+    
+    //==============================================================================================
+    pub fn unmap(&mut self, active_table: &mut ActivePageTable) {
+    //----------------------------------------------------------------------------------------------
+    // Unmap this page from the given page table.
+    //----------------------------------------------------------------------------------------------
+    // TAKES:   active_table -> table to unmap this page from
     //
     // RETURNS: nothing
     //==============================================================================================
+
+        active_table.unmap(self.page, &mut self.allocator);
+    }
 }
 
 
-
-//##################################################################################################
-//************************************ STRUCT DECLARATIONS *****************************************
-//##################################################################################################
-
-
-#[derive(Eq, PartialEq, Ord, PartialOrd, Debug)]
 //==================================================================================================
-pub struct Frame {
-//--------------------------------------------------------------------------------------------------
-// 
+impl MiniAllocator {
 //==================================================================================================
 
-    pub frame_num: usize,
+
+    //==============================================================================================
+    fn new<A: FrameAllocator>(allocator: &mut A) -> MiniAllocator {
+    //----------------------------------------------------------------------------------------------
+    // Pseudo constructor for MiniAllocator, obtaining MINI_FRAME_COUNT frames from the given
+    // allocator and storing them in an internal list.
+    //----------------------------------------------------------------------------------------------
+    // TAKES:   allocator -> FrameAllocator to obtain frames from
+    //
+    // RETURNS: MiniAllocator constructed from given parameters
+    //==============================================================================================
+
+        MiniAllocator([allocator.allocate_frame(), allocator.allocate_frame(), allocator.allocate_frame()])
+    }
+
+
 }
 
-//##################################################################################################
-//*********************************** STRUCT IMPLEMENTATIONS  **************************************
-//##################################################################################################
 
 //==================================================================================================
-impl Frame {
+impl FrameAllocator for MiniAllocator {
 //==================================================================================================
+
+
+    //==============================================================================================
+    fn allocate_frame(&mut self) -> Option<Frame> {
+    //----------------------------------------------------------------------------------------------
+    // Allocate the first available frame from internal list. Removes frame from list on allocation.
+    //----------------------------------------------------------------------------------------------
+    // TAKES:   nothing
+    //
+    // RETURNS: Some(...) -> allocated frame
+    //          None      -> no frames available to allocate    
+    //==============================================================================================
+
+        for frame_opt in &mut self.0 {
+            if frame_opt.is_some() {
+                return frame_opt.take();
+            }
+        }   
+        None
+    }
 
     
     //==============================================================================================
-    pub fn frame_containing_address(address: PhysicalAddress) -> Frame {
+    fn deallocate_frame(&mut self, frame: Frame) {
     //----------------------------------------------------------------------------------------------
-    // 
+    // Deallocate given frame, placing it back in the internal list. Should only deallocate frames
+    // that were allocated by this instance of MiniAllocator.    
     //----------------------------------------------------------------------------------------------
+    // TAKES:   frame -> frame to deallocate
     //
-    //
-    //
+    // RETURNS: nothing
     //==============================================================================================
 
-        Frame { frame_num: address / PAGE_SIZE }
+        for frame_opt in &mut self.0 {
+            if frame_opt.is_none() {
+                *frame_opt = Some(frame);
+                return;
+            }
+        }
     }
 
-
-    //==============================================================================================
-    pub fn address(&self) -> PhysicalAddress {
-    //----------------------------------------------------------------------------------------------
-    //
-    //----------------------------------------------------------------------------------------------
-    //    
-    //    
-    //
-    //==============================================================================================
-
-        self.frame_num * PAGE_SIZE
-    }
-
-    //===============================================================================================
-    fn clone(&self) -> Frame {
-    //----------------------------------------------------------------------------------------------
-    //
-    //----------------------------------------------------------------------------------------------
-    //    
-    //    
-    //
-    //==============================================================================================
     
-        Frame { frame_num: self.frame_num }
-    }
 }
